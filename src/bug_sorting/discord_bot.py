@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from bug_sorting.workflow import bugSortingWF
 from bug_sorting.vector_db import init_lancedb
-from bug_sorting.relational_db import init_db, insert_feedback, update_feedback_status
+from bug_sorting.relational_db import init_db, insert_feedback, update_feedback_status, update_feedback_data
 
 load_dotenv()
 
@@ -129,6 +129,53 @@ class FeedbackModerationView(discord.ui.View):
 
         await interaction.response.edit_message(embed=embed, view=self)
         await interaction.followup.send(f"Feedback #{feedback_id} rifiutato.", ephemeral=True)
+
+    @discord.ui.button(label="Modifica", style=discord.ButtonStyle.blurple, custom_id="btn_edit")
+    async def edit_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        embed = interaction.message.embeds[0]
+        feedback_id = int(embed.title.split("#")[1].split(":")[0])  # non potendo passare parametri al costruttore in quanto statico, dobbiamo estrarre l'id dal titolo
+
+        # estrai i valori correnti dai campi dell'embed
+        cur_title = embed.title.split(": ")[1]
+        cur_category = embed.fields[0].value
+        cur_severity = embed.fields[1].value
+        cur_platform = embed.fields[2].value
+
+        modal = EditFeedbackModal(feedback_id, cur_title, cur_category, cur_severity, cur_platform)
+        await interaction.response.send_modal(modal)
+
+
+class EditFeedbackModal(discord.ui.Modal, title="Modifica feedback"):
+    titolo = discord.ui.TextInput(label="Titolo", style=discord.TextStyle.short)
+    categoria = discord.ui.TextInput(label="Categoria", style=discord.TextStyle.short)
+    gravita = discord.ui.TextInput(label="Gravità", style=discord.TextStyle.short)
+    piattaforma = discord.ui.TextInput(label="Piattaforma", style=discord.TextStyle.short)
+
+    def __init__(self, feedback_id: int, cur_title: str, cur_category: str, cur_severity: str, cur_platform: str):
+        super().__init__()
+        self.feedback_id = feedback_id
+        self.titolo.default = cur_title
+        self.categoria.default = cur_category
+        self.gravita.default = cur_severity
+        self.piattaforma.default = cur_platform
+
+    async def on_submit(self, interaction: discord.Interaction):
+        update_feedback_data(
+            feedback_id=self.feedback_id,
+            feedback_title=self.titolo.value,
+            feedback_category=self.categoria.value,
+            feedback_severity=self.gravita.value,
+            feedback_platform=self.piattaforma.value
+        )
+
+        embed = interaction.message.embeds[0]
+        embed.title = f"Feedback #{self.feedback_id}: {self.titolo.value}"
+        embed.set_field_at(0, name="Categoria", value=self.categoria.value, inline=True)
+        embed.set_field_at(1, name="Gravità", value=self.gravita.value, inline=True)
+        embed.set_field_at(2, name="Piattaforma", value=self.piattaforma.value, inline=True)
+
+        await interaction.response.edit_message(embed=embed)
+        await interaction.followup.send(f"Dati del feedback #{self.feedback_id} corretti.", ephemeral=True)
 
 # endregion
 

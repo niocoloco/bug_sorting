@@ -95,3 +95,19 @@ def update_feedback_status(feedback_id: int, new_status: str):
     cursor.execute(query, (new_status, feedback_id))
     conn.commit()
     conn.close()
+
+def update_feedback_data(feedback_id: int, feedback_title: str, feedback_category: str, feedback_severity: str, feedback_platform: str):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    query = '''
+    UPDATE feedbacks
+    SET title = ?, category = ?, severity = ?, platform = ?
+    WHERE id = ?
+    '''
+
+    values = (feedback_title, feedback_category, feedback_severity, feedback_platform, feedback_id)
+
+    cursor.execute(query, values)
+    conn.commit()
+    conn.close()
