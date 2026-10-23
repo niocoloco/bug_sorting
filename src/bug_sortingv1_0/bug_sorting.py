@@ -8,24 +8,8 @@ from bug_sortingv1_0.models import CleanedFeedback
 
 load_dotenv() # Carica le variabili d'ambiente dal file .env
 
-from pydantic import BaseModel, Field
-import json
-from pathlib import Path
-from agno.db.sqlite import SqliteDb
-from agno.os import AgentOS
 from agno.tools import tool
-from agno.tools.reasoning import ReasoningTools
-from agno.workflow.step import Step, StepInput, StepOutput
 from agno.workflow.workflow import Workflow
-from agno.knowledge.knowledge import Knowledge
-from agno.knowledge.embedder.google import GeminiEmbedder
-from agno.vectordb.lancedb import LanceDb, SearchType
-from agno.learn import (
-    LearningMachine,
-    LearningMode,
-    UserProfileConfig,
-    UserMemoryConfig,
-)
 
 # agenti
 from bug_sortingv1_0.agents import filterInputAgent, formatFeedbackAgent, discardFeedbackAgent 
@@ -36,20 +20,20 @@ from bug_sortingv1_0.agents import filterInputAgent, formatFeedbackAgent, discar
 
 class BugSortingWorkflow(Workflow):
     def run(self, user_input: str):
-        # 1. Filtra l'input originale tramite il primo agente
+        # chiama il primo agente per filtrare il feedback ricevuto in input
         filter_response = filterInputAgent.run(user_input)
         cleaned_data = filter_response.content
         
-        # Gestione in caso di mancato rispetto dello schema da parte del modello
+        # se per qualche motivo il risultato non è stato formattato, lo scarta
         if not isinstance(cleaned_data, CleanedFeedback):
             return discardFeedbackAgent.run(user_input)
         
-        # 2. Indirizza il flusso analizzando il flag booleano
+        # se il risultato è considerato non valido lo scarta
         if not cleaned_data.valid:
-            # Passa l'input originale all'agente di scarto per fargli capire cosa sta rifiutando
+            # passa l'input all'agente per scartare, in modo che possa scrivere un messaggio con le motivazioni
             return discardFeedbackAgent.run(user_input)
         else:
-            # Passa solo il testo ripulito all'agente di formattazione
+            # passa il testo pulito all'agente di formattazione
             return formatFeedbackAgent.run(cleaned_data.content)
 
 bugSortingWF = BugSortingWorkflow(
