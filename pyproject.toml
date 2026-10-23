@@ -1,5 +1,5 @@
 [project]
-name = "bug-sortingv1-0"
+name = "bug-sorting"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-bug-sortingv1-0 = "bug_sortingv1_0:main"
+bug-sorting = "bug_sorting:main"
 
 [build-system]
 requires = ["uv_build>=0.13.0,<0.14.0"]

@@ -4,7 +4,7 @@ from typing import List
 from agno.workflow import Router
 from dotenv import load_dotenv
 
-from bug_sortingv1_0.models import CleanedFeedback
+from bug_sorting.models import CleanedFeedback
 
 load_dotenv() # Carica le variabili d'ambiente dal file .env
 
@@ -12,14 +12,14 @@ from agno.tools import tool
 from agno.workflow.workflow import Workflow
 
 # agenti
-from bug_sortingv1_0.agents import filterInputAgent, formatFeedbackAgent, discardFeedbackAgent 
+from bug_sorting.agents import filterInputAgent, formatFeedbackAgent, discardFeedbackAgent 
 
 # endregion
 
 # region Workflow
 
 class BugSortingWorkflow(Workflow):
-    def run(self, user_input: str):
+    def run(self, user_input: str): 
         # chiama il primo agente per filtrare il feedback ricevuto in input
         filter_response = filterInputAgent.run(user_input)
         cleaned_data = filter_response.content
@@ -35,6 +35,8 @@ class BugSortingWorkflow(Workflow):
         else:
             # passa il testo pulito all'agente di formattazione
             return formatFeedbackAgent.run(cleaned_data.content)
+
+# endregion
 
 bugSortingWF = BugSortingWorkflow(
     name="BugSortingWorkflow",

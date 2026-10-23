@@ -3,9 +3,9 @@ import asyncio
 import os
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from bug_sortingv1_0.bug_sorting import bugSortingWF
-from bug_sortingv1_0.vector_db import init_lancedb
-from bug_sortingv1_0.relational_db import init_db, insert_feedback, update_feedback_status
+from bug_sorting.workflow import bugSortingWF
+from bug_sorting.vector_db import init_lancedb
+from bug_sorting.relational_db import init_db, insert_feedback, update_feedback_status
 
 load_dotenv()
 
@@ -111,7 +111,7 @@ class FeedbackModerationView(discord.ui.View):
         embed.title = embed.title + " [APPROVATO]"
 
         await interaction.response.edit_message(embed=embed, view=self)
-        await interaction.response.send_message(f"Feedback #{feedback_id} approvato.", ephemeral=True)
+        await interaction.followup.send(f"Feedback #{feedback_id} approvato.", ephemeral=True)
 
     @discord.ui.button(label="Rifiuta", style=discord.ButtonStyle.red, custom_id="btn_reject")
     async def reject_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -128,7 +128,7 @@ class FeedbackModerationView(discord.ui.View):
         embed.title = embed.title + " [RIFIUTATO]"
 
         await interaction.response.edit_message(embed=embed, view=self)
-        await interaction.response.send_message(f"Feedback #{feedback_id} rifiutato.", ephemeral=True)
+        await interaction.followup.send(f"Feedback #{feedback_id} rifiutato.", ephemeral=True)
 
 # endregion
 

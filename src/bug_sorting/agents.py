@@ -1,6 +1,6 @@
 from agno.agent import Agent
 from agno.models.google import Gemini
-from bug_sortingv1_0.models import FormattedFeedback, CleanedFeedback
+from bug_sorting.models import FormattedFeedback, CleanedFeedback
 
 MODEL = Gemini(id="gemini-3.5-flash-lite")
 

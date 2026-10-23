@@ -298,7 +298,7 @@ wheels = [
 ]
 
 [[package]]
-name = "bug-sortingv1-0"
+name = "bug-sorting"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
