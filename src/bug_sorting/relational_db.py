@@ -111,3 +111,46 @@ def update_feedback_data(feedback_id: int, feedback_title: str, feedback_categor
     cursor.execute(query, values)
     conn.commit()
     conn.close()
+
+def get_feedback_by_id(feedback_id: int) -> dict:
+    conn = connect_db()
+    # imposta la row_factory per restituire i risultati come dizionario invece che come tupla
+    conn.row_factory = sqlite3.Row 
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM feedbacks WHERE id = ?", (feedback_id,))
+    row = cursor.fetchone()
+    
+    conn.close()
+    
+    return dict(row) if row else None
+
+def get_feedback_summaries(feedback_ids: list[int]) -> list[tuple]:
+    if not feedback_ids:
+        return []
+    
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Genera i segnaposto in base al numero di ID trovati (es. "?, ?, ?")
+    placeholders = ','.join(['?'] * len(feedback_ids))
+    cursor.execute(f"SELECT id, title FROM feedbacks WHERE id IN ({placeholders})", feedback_ids)
+    results = cursor.fetchall()
+    
+    conn.close()
+    # restituisce una lista di tuple: [(1, "Titolo del primo bug"), (5, "Titolo del secondo")]
+    return results
+
+def mark_as_duplicate(feedback_id: int, original_feedback_id: int):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    query = '''
+    UPDATE feedbacks
+    SET status = 'rejected', duplicate_of_id = ?
+    WHERE id = ?
+    '''
+
+    cursor.execute(query, (original_feedback_id, feedback_id))
+    conn.commit()
+    conn.close()
