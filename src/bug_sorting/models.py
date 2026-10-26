@@ -3,13 +3,17 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-# JSON schema per il feedback filtrato
 class CleanedFeedback(BaseModel):
+    """
+    JSON schema per il feedback pulito e filtrato.
+    """
     content: str = Field(description="Contenuto del feedback pulito e filtrato")
     valid: bool = Field(description="Indica se il feedback è valido o irrilevante")
 
-# enumeratori per la categoria del feedback
 class FeedbackCategory(str, Enum):
+    """
+    Enumeratori per le categorie del feedback.
+    """
     BUG = "bug"
     FEATURE_REQUEST = "feature_request"
     PERFORMANCE_ISSUE = "performance_issue"
@@ -18,15 +22,19 @@ class FeedbackCategory(str, Enum):
     BALANCEMENT_REQUEST = "balancement_request"
     OTHER = "other"
 
-# enumeratori per la gravità del feedback
 class FeedbackSeverity(str, Enum):
+    """
+    Enumeratori per la gravità del feedback.
+    """
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
-# JSON schema per il feedback formattato
 class FormattedFeedback(BaseModel):
+    """
+    JSON schema per il feedback formattato.
+    """
     title: str = Field(description="Titolo del feedback")
     description: str = Field(description="Descrizione dettagliata del feedback")
     category: FeedbackCategory = Field(description="Categoria del feedback")
