@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from bug_sorting.workflow import bugSortingWF
-from bug_sorting.vector_db import init_lancedb, insert_feedback_vector
+from bug_sorting.vector_db import *
 from bug_sorting.relational_db import *
 
 load_dotenv()
@@ -65,14 +65,21 @@ def deduplicate_vector_feedback(feedback_data: BaseModel) -> list:
         list: Lista di ID dei feedback duplicati.
     """
 
-    # trasforma gli step per riprodurre un bug (se presenti) in una stringa
-    steps = " ".join(feedback_data.steps_to_reproduce) if feedback_data.steps_to_reproduce else ""
+    ## trasforma gli step per riprodurre un bug (se presenti) in una stringa
+    #steps = " ".join(feedback_data.steps_to_reproduce) if feedback_data.steps_to_reproduce else ""
+#
+    ## concatena titolo, descrizione, steps, messaggi di errore e contesto aggiuntivo in una stringa sola
+    #testo_grezzo = f"{feedback_data.title} {feedback_data.description} {steps} {feedback_data.error_message} {feedback_data.additional_context}"
+#
+    ## rimuove eventuali spazi multipli e normalizza il testo
+    #vector_text = " ".join(testo_grezzo.split())
 
-    # concatena titolo, descrizione, steps, messaggi di errore e contesto aggiuntivo in una stringa sola
-    testo_grezzo = f"{feedback_data.title} {feedback_data.description} {steps} {feedback_data.error_message} {feedback_data.additional_context}"
-
-    # rimuove eventuali spazi multipli e normalizza il testo
-    vector_text = " ".join(testo_grezzo.split())
+    vector_text = genera_testo_embedding(
+        titolo=feedback_data.title,
+        descrizione=feedback_data.description,
+        steps=feedback_data.steps_to_reproduce,
+        error=feedback_data.error_message
+    )
 
     # ricerca i valori simili
     risultati_grezzi = find_similar_feedback(
@@ -378,7 +385,7 @@ async def on_message(message):
         await message.remove_reaction("⌛", client.user) # rimuove la reazione 'clessidra' dal messaggio una volta finita l'elaborazione.
 
         # l'unico risultato del workflow risultante in un BaseModel è quello in cui il testo di input era valido
-        if isinstance(risultato.content, BaseModel):
+        if hasattr(risultato, 'content') and isinstance(risultato.content, BaseModel):
             feedback_estratto = risultato.content
             
             # esecuzione della deduplicazione

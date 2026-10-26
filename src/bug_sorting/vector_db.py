@@ -11,7 +11,8 @@ from torch import where
 
 # inizializzazione dell'embedder locale
 # la scelta di usare un embedder locale è motivata dalla necessità di non sprecare i token di cui hanno bisogno gli agenti per generare le risposte
-embedder = get_registry().get("sentence-transformers").create(name="all-MiniLM-L6-v2")
+#embedder = get_registry().get("sentence-transformers").create(name="all-MiniLM-L6-v2")
+embedder = get_registry().get("sentence-transformers").create(name="paraphrase-multilingual-MiniLM-L12-v2")
 
 class FeedbackVector(LanceModel):
     """
@@ -53,17 +54,30 @@ def insert_feedback_vector(feedback_data: dict, db_connection):
     # connessione alla tabella dei vettori di feedback
     table = db_connection.open_table("feedback_vectors")
 
-    # creazione del contenuto testuale da cui generare l'embedding
-    steps = feedback_data.get('steps_to_reproduce') or ""
-    error = feedback_data.get('error_message') or ""
-    text_content = f"{feedback_data['title']}. {feedback_data['description']}. {steps}. {error}".strip()
+    ## creazione del contenuto testuale da cui generare l'embedding
+    #steps = feedback_data.get('steps_to_reproduce') or ""
+    #error = feedback_data.get('error_message') or ""
+    #text_content = f"{feedback_data['title']}. {feedback_data['description']}. {steps}. {error}".strip()
+
+    text_content = genera_testo_embedding(
+        titolo=feedback_data['title'],
+        descrizione=feedback_data['description'],
+        steps=feedback_data.get('steps_to_reproduce', []),
+        error=feedback_data.get('error_message', "")
+    )
 
     # inserimento del nuovo feedback nella tabella
     table.add([
         {
             "feedback_id": feedback_data['id'],
-            "platform": feedback_data.get('platform', 'unknown'),
+            "platform": feedback_data.get('platform') or "UNKNOWN",
             "category": feedback_data['category'],
             "text": text_content
         }
     ])
+
+def genera_testo_embedding(titolo: str, descrizione: str, steps: list, error: str) -> str:
+    steps_str = " ".join(steps) if isinstance(steps, list) else str(steps or "")
+    error_str = error or ""
+    testo_grezzo = f"{titolo} {descrizione} {steps_str} {error_str}"
+    return " ".join(testo_grezzo.split())

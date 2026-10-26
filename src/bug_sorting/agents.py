@@ -34,13 +34,3 @@ formatFeedbackAgent = Agent(
                   "Se non è fornito alcun contesto aggiuntivo, imposta 'additional_context' come stringa vuota."
     ]
 )
-
-# TODO: capire se eliminare (o sostituire con un messaggio statico)
-discardFeedbackAgent = Agent(
-    model=MODEL,
-    description="Offre una breve motivazione sul motivo per la quale il feedback è stato scartato.",
-    instructions=[
-        "Il messaggio fornito è stato classificato come irrilevante.",
-        "Genera una risposta sintetica in cui spieghi che il feedback è stato scartato perché privo di informazioni tecniche utili."
-    ]
-)
