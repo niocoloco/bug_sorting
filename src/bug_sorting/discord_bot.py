@@ -97,17 +97,17 @@ def deduplicate_vector_feedback(feedback_data: BaseModel) -> list:
     
     return duplicati_validati
 
-def create_feedback_embed(feedback_data: BaseModel, feedback_id: int, duplicate_id: list[int] = None) -> discord.Embed:
+def create_feedback_embed(feedback_data: BaseModel, feedback_id: int, duplicates_info: list[tuple] = None) -> discord.Embed:
     """
     Crea un embed di Discord per visualizzare i dettagli del feedback elaborati dagli agenti.
     Args:
         feedback_data (BaseModel): Oggetto contenente i dati del feedback.
         feedback_id (int): ID del feedback nel database relazionale.
-        duplicate_id (list[int], optional): Lista di ID dei feedback duplicati, se presenti.
+        duplicates_info (list[tuple], optional): Lista di tuple contenenti informazioni sui feedback duplicati, se presenti.
     Returns:
         discord.Embed: Embed di Discord contenente i dettagli del feedback.
     """
-    color = discord.Color.red() if duplicate_id else discord.Color.green()
+    color = discord.Color.red() if duplicates_info else discord.Color.green()
     embed = discord.Embed(
         title = f"Feedback #{feedback_id}: {feedback_data.title}",
         description = feedback_data.description,
@@ -122,8 +122,9 @@ def create_feedback_embed(feedback_data: BaseModel, feedback_id: int, duplicate_
     embed.add_field(name="Contesto aggiuntivo", value=feedback_data.additional_context if feedback_data.additional_context else "Nessun dettaglio fornito", inline=False)
 
     # se sono presenti dublicati, aggiunge un campo all'embed per elencarli
-    if duplicate_id:
-        embed.add_field(name="⚠️ Potenziali Duplicati", value=str(duplicate_id), inline=False)
+    if duplicates_info:
+        testo_duplicati = "\n".join([f"• #{dup_id}: {dup_title}" for dup_id, dup_title in duplicates_info])
+        embed.add_field(name="⚠️ Potenziali Duplicati", value=testo_duplicati[:1024], inline=False)
 
     return embed
 
@@ -192,7 +193,7 @@ class FeedbackModerationView(discord.ui.View):
     async def reject_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         """
         Callback per il pulsante di rifiuto del feedback.
-        Aggiorna lo stato del feedback nel database relazionale e inserisce il feedback nel database vettoriale.
+        Aggiorna lo stato del feedback nel database relazionale.
         Args:
             interaction (discord.Interaction): L'interazione dell'utente con il pulsante.
             button (discord.ui.Button): Il pulsante premuto dall'utente.
@@ -381,7 +382,7 @@ async def on_message(message):
     print(f"Messaggio ricevuto: {message.content} da {message.author}") # stampa del messaggio ricevuto (debug)
 
     try:
-        risultato = await asyncio.to_thread(bugSortingWF.run, message.content)  # esegue la funzione di elaborazione del feedback in un thread separato per non bloccare l'evento principale
+        risultato = await asyncio.to_thread(bugSortingWF, message.content)  # esegue la funzione di elaborazione del feedback in un thread separato per non bloccare l'evento principale
         await message.remove_reaction("⌛", client.user) # rimuove la reazione 'clessidra' dal messaggio una volta finita l'elaborazione.
 
         # l'unico risultato del workflow risultante in un BaseModel è quello in cui il testo di input era valido
@@ -409,8 +410,7 @@ async def on_message(message):
                 return
 
             # creazione dell'embed con i dati del feedback
-            embed_feedback_for_dev = create_feedback_embed(feedback_estratto, new_feedback_id, duplicate_id=id_duplicati)
-
+            embed_feedback_for_dev = create_feedback_embed(feedback_estratto, new_feedback_id, duplicates_info=info_duplicati)
             # invio dell'embed al canale sviluppatori con la view di moderazione dei feedback
             await dev_channel.send(embed=embed_feedback_for_dev, view=FeedbackModerationView(duplicate_ids=info_duplicati))
 
