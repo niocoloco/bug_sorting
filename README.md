@@ -201,3 +201,4 @@ Inserendo un feedback e riavviando il bot, i pulsanti rimangono funzionanti ed �
 9. Aprire il client di Discord, andare in **Impostazioni utente** -> **Avanzate** e attivare **Modalità sviluppatore**.
 10. Creare all'interno del server due canali, uno per l'invio dei feedback e uno per i moderatori.
 11. Fare tasto destro sui canali e premere su copia ID. Assegnare questi valori nel file .env rispettivamente alle chiavi FEEDBACK_CHAT_ID e DEVELOPER_CHAT_ID.
+13. Da questo punto in poi è possibile seguire la guida **Deployment rapido** in cima a questo file.

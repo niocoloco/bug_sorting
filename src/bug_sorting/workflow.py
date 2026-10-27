@@ -12,11 +12,10 @@ from agno.workflow.workflow import Workflow
 
 from bug_sorting.agents import filterInputAgent, formatFeedbackAgent#, discardFeedbackAgent 
 
-
 class BugSortingWorkflow(Workflow):
     """
     Workflow per la pulizia, classificazione e formattazione dei feedback degli utenti.
-    Questo workflow utilizza tre agenti:
+    Questo workflow utilizza due agenti:
     1. filterInputAgent: Filtra il rumore dai feedback in input degli utenti e restituisce solo il testo rilevante.
     2. formatFeedbackAgent: Formatta il testo non strutturato all'interno di uno schema formale.
     """
