@@ -4,7 +4,6 @@ __pycache__/
 build/
 dist/
 wheels/
-data/
 *.egg-info
 
 # Virtual environments
@@ -15,3 +14,6 @@ data/
 
 # Markdown
 .TODO.md
+
+# Data files
+data/

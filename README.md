@@ -2,30 +2,31 @@
 
 BugSorting è un sistema intelligente il cui scopo è raccogliere e filtrare i feedback riguardanti un videogioco inviati dalla community tramite un canale Discord per aiutare il lavoro degli sviluppatori indipendenti.
 
-## Deployment
+## Deployment rapido
 
 Per testarlo rapidamente senza il bisogno di creare un server Discord è necessario innanzitutto accedere nel server Discord che abbiamo usato per il testing durante lo sviluppo. Forniremo il link e il token nella mail di consegna.
 
 ### 1. Variabili d'ambiente
-Una volta effettuato l'accesso è necessario scaricare il codice e creare un file .env nella root del progetto per inserire le seguenti variabili:
+Una volta effettuato l'accesso al server, scaricare il progetto da github e creare un file .env nella root per inserire le seguenti variabili:
 ```
 - GOOGLE_API_KEY
-    - necessaria per gli agenti AI 
+    - necessaria per gli agenti AI.
 - DISCORD_BOT_TOKEN
-    - necessario per identificare l'applicazione Discord a cui si lega (fornito nella consegna)
+    - necessario per identificare l'applicazione Discord a cui si lega (fornito nella consegna).
 - FEEDBACK_CHAT_ID
-    - identificatore del canale #segnalazione-bug
+    - identificatore del canale #segnalazione-bug.
 - DEVELOPER_CHAT_ID
-    - identificatore del canale #developer-only
+    - identificatore del canale #developer-only.
 
 - HF_TOKEN [OPZIONALE]
-    - token legato al proprio account di Hugging Face, utilizzato per rendere il download del modello di embedding locale più rapido
+    - token legato al proprio account di Hugging Face utilizzato per rendere il download del modello di embedding locale più rapido.
 ```
 
 ### 2. Installazione delle dipendenze
 
-Il progetto utilizza uv come gestore dei pacchetti. Per sincronizzare le dipendenze esegui questo comando nella cartella root del progetto:
+Il progetto utilizza uv come gestore dei pacchetti. Per sincronizzare le dipendenze eseguire questi comandi nella cartella root del progetto:
 ```bash
+uv venv
 .venv\Scripts\activate
 uv sync
 ```
@@ -39,21 +40,20 @@ L'avvio a me richiede dai 30 secondi ai 2 minuti, con una connessione rapida è 
 
 ### 4. Esempio di flusso di lavoro
 
-Una volta avviato il programma, si può notare come l'utente Bugsorting con label APP all'interno appaia ora online. Se l'utente è già online significa che c'è già un'altra istanza attiva, averne due causa la duplicazione di tutte le operazioni effettuate.
+Una volta avviato il programma, si può notare come l'utente **Bugsorting** con label APP all'interno del server appaia ora online. Se l'utente è già online prima dell'avvio, significa che c'è già un'altra istanza attiva, averne due causa la duplicazione di tutte le operazioni effettuate.
 
-### 1. Inserimento Segnalazione
-Nel canale #segnalazione-bug, l'utente descrive il bug in linguaggio naturale, senza dover seguire template prestabiliti.
-* Appena il messaggio viene inviato, il bot aggiunge una reazione ⌛ per confermare la presa in carico.
-* Al termine dell'estrazione semantica, il bot rimuove la clessidra e assegna ✅ se il bug è stato elaborato con successo, o ❌ se il testo è stato scartato (es. off-topic, spam) o se ci sono stati problemi con i modelli AI (token terminati o modelli irraggiungibili a causa del traffico a cui sono sottoposte; solitamente questo problema avviene dopo le 21).
+#### 1. Inserimento Segnalazione
+Nel canale **#segnalazione-bug**, l'utente descrive il bug in linguaggio naturale, senza dover seguire template prestabiliti.
+- Appena il messaggio viene inviato, il bot aggiunge una reazione ⌛ per confermare la presa in carico.
+- Al termine dell'elaborazione, il bot rimuove la clessidra e assegna ✅ se il bug è stato elaborato con successo, o ❌ se il testo è stato scartato (es. off-topic, spam) o se ci sono stati problemi con i modelli AI (token terminati o modelli irraggiungibili a causa del traffico a cui sono sottoposte; quest'ultimo problema sembra accentuarsi nelle ore serali e accade sporadicamente durante il giorno).
 
-### 2. Validazione Feedback
-Nel canale #developer-only, il sistema genera un Embed riassuntivo contenente i dati estratti e categorizzati dall'LLM. Sotto il messaggio sono presenti i controlli operativi:
+#### 2. Validazione Feedback
+Nel canale **#developer-only**, il sistema genera un Embed riassuntivo contenente i dati estratti e categorizzati dall'LLM. Sotto il messaggio sono presenti i seguenti pulsanti:
 
-* **Bottone APPROVA:** Accetta il feedback. Lo stato viene aggiornato e i dati vettoriali vengono inseriti in LanceDB per fungere da confronto per le future segnalazioni.
-* **Bottone RIFIUTA:** Scarta il feedback aggiornandone lo stato.
-* **Bottone MODIFICA:** Apre un modale che permette al moderatore di sovrascrivere manualmente il titolo, la categoria, la gravità o la piattaforma in caso di allucinazioni da parte dell'AI.
-* **Menu "Segna come duplicato...":** Questo menu a tendina appare **solo** se il motore vettoriale ha riscontrato un'alta similitudine semantica con feedback già approvati in passato. Selezionando una voce, il feedback corrente viene chiuso e contrassegnato come duplicato del bug originale selezionato.
-
+- **Pulsante APPROVA:** Accetta il feedback. Lo stato viene aggiornato e i dati vettoriali vengono inseriti in LanceDB per fungere da confronto per le future segnalazioni.
+- **Pulsante RIFIUTA:** Scarta il feedback aggiornandone lo stato.
+- **Pulsante MODIFICA:** Apre un modale che permette al moderatore di sovrascrivere manualmente il titolo, la categoria, la gravità o la piattaforma in caso di allucinazioni da parte dell'AI.
+- **Menù "Segna come duplicato...":** Questo menù a tendina appare **solo** se il motore vettoriale ha riscontrato un'alta similitudine semantica con feedback già approvati in passato. Selezionando una voce, il feedback corrente viene chiuso e contrassegnato come duplicato del bug originale selezionato.
 
 ## Test
 
@@ -125,7 +125,7 @@ Dati formattati:
 }
 ```
 
-## Test 4: Deduplicazione:
+### Test 4: Deduplicazione:
 Input
 ```
 Non è possibile succedano cose del genere! Stavo giocando da PS5, sono riuscito finalmente a superare il dungeon del vulcano e sono arrivato al castello. Stavo per fare la guardia al first try e appena è entrata in seconda fase la mia alabarda è sparita facendomi sconfiggere. L'ultimo checkpoint era all'inizio del vulcano  e ora devo rifare tutto.
@@ -187,3 +187,17 @@ Inoltre in questo caso non appare il menù a tendina in quanto il feedback non �
 
 ### Test 5: Riavvio del bot con feedback 'pending'
 Inserendo un feedback e riavviando il bot, i pulsanti rimangono funzionanti ed è possibile interagire con i feedback inviati prima del riavvio.
+
+## Deployment nel proprio server Discord
+
+1. Accedere a Discord Developer Portal (https://discord.com/developers/applications).
+2. In alto a destra premere su **Create**.
+3. All'interno della scheda aperta, premere in alto a destra su **Crea app nuova** e assegnare un nome all'applicazione.
+4. Accedere al menù **Bot** e premere su **Reset Token**. Copiare la stringa ottenuta, sarà il valore della variabile DISCORD_BOT_TOKEN da inserire nel file .env.
+5. Sotto **Privileged Gateway Intents** abilitare **Message Content Intents** necessario per leggere i messaggi nei canali.
+6. Generare l'URL di invito nella sezione **OAuth2** -> **URL Generator**. Sotto la colonna **ambiti** premere **bot**. Una volta premuto si aprirà la schermata bot permission, bisogna selezionare **Visualizzare i canali**, **Leggere la cronologia dei messaggi**, **Invia messaggi**, **Aggiungere reazioni** e **Incorporare i link**.
+7. Una volta fatto tutto si può generare il link scegliendo **Installazione per guild**.
+8. Una volta ottenuto il link è sufficiente incollarlo nella barra di ricerca del browser e selezionare nella pagina che si apre il server nella quale si vuole implementare il sistema.
+9. Aprire il client di Discord, andare in **Impostazioni utente** -> **Avanzate** e attivare **Modalità sviluppatore**.
+10. Creare all'interno del server due canali, uno per l'invio dei feedback e uno per i moderatori.
+11. Fare tasto destro sui canali e premere su copia ID. Assegnare questi valori nel file .env rispettivamente alle chiavi FEEDBACK_CHAT_ID e DEVELOPER_CHAT_ID.
