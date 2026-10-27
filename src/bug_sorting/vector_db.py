@@ -77,6 +77,9 @@ def insert_feedback_vector(feedback_data: dict, db_connection):
     ])
 
 def genera_testo_embedding(titolo: str, descrizione: str, steps: list, error: str) -> str:
+    """
+    Compone il testo con la quale verrà generato l'embedding a partire dai campi del feedback.
+    """
     steps_str = " ".join(steps) if isinstance(steps, list) else str(steps or "")
     error_str = error or ""
     testo_grezzo = f"{titolo} {descrizione} {steps_str} {error_str}"
