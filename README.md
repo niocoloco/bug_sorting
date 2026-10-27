@@ -53,3 +53,137 @@ Nel canale #developer-only, il sistema genera un Embed riassuntivo contenente i 
 * **Bottone RIFIUTA:** Scarta il feedback aggiornandone lo stato.
 * **Bottone MODIFICA:** Apre un modale che permette al moderatore di sovrascrivere manualmente il titolo, la categoria, la gravità o la piattaforma in caso di allucinazioni da parte dell'AI.
 * **Menu "Segna come duplicato...":** Questo menu a tendina appare **solo** se il motore vettoriale ha riscontrato un'alta similitudine semantica con feedback già approvati in passato. Selezionando una voce, il feedback corrente viene chiuso e contrassegnato come duplicato del bug originale selezionato.
+
+
+## Test
+
+### Test 1: Estrazione dei dati e filtraggio delle informazioni non rilevanti
+
+Input
+```
+Ciao, oggi mentre giocavo mi è successa una cosa strana. Ero fuori dal castello e stavo combattendo la guardia davanti al portone. Arrivato alla seconda fase, la mia spada è sparita. Ho riavviato il gioco e la spada non è tornata. Ho farmato un paio d'ore per trovarla e ora non c'è più, spero risolviate al più presto, incompetenti! Gioco da PS5.
+```
+
+Dati filtrati:
+```
+content='Ero fuori dal castello e stavo combattendo la guardia davanti al portone. Arrivato alla seconda fase, la mia spada è sparita. Ho riavviato il gioco e la spada non è tornata. Gioco da PS5.' valid=True
+```
+
+Dati formattati:
+```
+{
+    "title": "Sparizione spada nella seconda fase della guardia",
+    "description": "Durante il combattimento con la guardia fuori dal castello, arrivato alla seconda fase, la spada del personaggio è sparita e non è ricomparsa nemmeno dopo il riavvio del gioco.",
+    "category": "bug",
+    "severity": "high",
+    "platform": "PS5",
+    "steps_to_reproduce": [
+        "Andare fuori dal castello",
+        "Iniziare il combattimento con la guardia davanti al portone",
+        "Arrivare alla seconda fase del combattimento"
+    ],
+    "error_message": "",
+    "additional_context": "Il problema si è verificato fuori dal castello contro la guardia del portone."
+}
+```
+
+### Test 2: Messaggio non rilevante
+Input
+```
+Il vostro gioco fa schifo, spero che falliate!
+```
+
+Dati filtrati:
+```
+content='' valid=False
+```
+
+Dati formattati: nessuno, il flusso viene fermato prima.
+
+### Test 3: Segnalazione con dati mancanti
+Input
+```
+Stavo giocando la nuova patch e i miei dati di salvataggio sono scomparsi
+```
+
+Dati filtrati:
+```
+content='I miei dati di salvataggio sono scomparsi dopo la nuova patch.' valid=True
+```
+
+Dati formattati:
+```
+{
+    "title": "Dati di salvataggio scomparsi",
+    "description": "I miei dati di salvataggio sono scomparsi dopo la nuova patch.",
+    "category": "bug",
+    "severity": "critical",
+    "platform": "UNKNOWN",
+    "steps_to_reproduce": [],
+    "error_message": "",
+    "additional_context": "Dopo la nuova patch"
+}
+```
+
+## Test 4: Deduplicazione:
+Input
+```
+Non è possibile succedano cose del genere! Stavo giocando da PS5, sono riuscito finalmente a superare il dungeon del vulcano e sono arrivato al castello. Stavo per fare la guardia al first try e appena è entrata in seconda fase la mia alabarda è sparita facendomi sconfiggere. L'ultimo checkpoint era all'inizio del vulcano  e ora devo rifare tutto.
+```
+
+Dati filtrati:
+```
+content="Stavo giocando da PS5. Appena il boss è entrato in seconda fase la mia alabarda è sparita facendomi sconfiggere. L'ultimo checkpoint era all'inizio del vulcano." valid=True
+```
+
+Dati formattati:
+```
+{
+    "title": "Sparizione alabarda nella seconda fase del boss",
+    "description": "Durante la seconda fase del combattimento con il boss, l'alabarda del personaggio è sparita improvvisamente causando la sconfitta. L'ultimo checkpoint utile si trovava all'inizio del vulcano.",
+    "category": "bug",
+    "severity": "high",
+    "platform": "PS5",
+    "steps_to_reproduce": [
+        "Entrare nel combattimento contro il boss",
+        "Portare il boss alla seconda fase"
+    ],
+    "error_message": "",
+    "additional_context": "L'utente stava giocando su PS5 ed è resuscitato all'inizio del vulcano dopo la sconfitta."
+}
+```
+
+Nell'embed di Discord è apparso un menù a tendina con gli identificatori dei feedback ritenuti simili attraverso la ricerca nel database vettoriale. In questo caso è apparso selezionabile il feedback inserito nel test 1.
+
+### Test 4: Nuovo feedback e modifica ai dati
+Input
+```
+stavo andando a cavallo sella zona della neve e il gioco è calato sotto i 30 fps. considerando che uso una rtx5090 non penso il problema sia mio, ma vostro. imparate ad ottimizzare il gioco prima di pubblicarlo da niocoloco
+```
+
+Dati filtrati:
+```
+content='Stavo andando a cavallo nella zona della neve e il gioco è calato sotto i 30 fps. Uso una RTX 5090.' valid=True
+```
+
+Dati formattati:
+```
+{
+    "title": "Calo di frame rate nella zona della neve",
+    "description": "Il gioco è calato sotto i 30 fps mentre andavo a cavallo nella zona della neve.",
+    "category": "performance_issue",
+    "severity": "medium",
+    "platform": "PC",
+    "steps_to_reproduce": [
+        "Andare a cavallo nella zona della neve"
+    ],
+    "error_message": "",
+    "additional_context": "Uso una RTX 5090"
+}
+```
+
+Dall'embed di Discord è possibile modificare i valori assegnati dall'agente. Ad esempio la severity a medium, abbassabile in questo caso a low. Si può anche notare come la piattaforma sia diventata PC senza specificarlo, in questo caso è corretto, ma la funzione di modifica è implementata per risolvere eventuali allucinazioni.
+Inoltre in questo caso non appare il menù a tendina in quanto il feedback non è simile ad altri precedentemente inseriti.
+
+### Test 5: Riavvio del bot con feedback 'pending'
+Inserendo un feedback e riavviando il bot, i pulsanti rimangono funzionanti ed è possibile interagire con i feedback inviati prima del riavvio.
