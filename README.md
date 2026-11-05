@@ -40,7 +40,7 @@ L'avvio a me richiede dai 30 secondi ai 2 minuti, con una connessione rapida è 
 
 ### 4. Esempio di flusso di lavoro
 
-Una volta avviato il programma, si può notare come l'utente **Bugsorting** con label APP all'interno del server appaia ora online. Se l'utente è già online prima dell'avvio, significa che c'è già un'altra istanza attiva, averne due causa la duplicazione di tutte le operazioni effettuate.
+Una volta avviato il programma, si può notare come l'utente **Bugsorting** con label APP all'interno del server appaia ora online. Se l'utente è già online prima dell'avvio, significa che c'è già un'altra istanza attiva, averne due causa la duplicazione di tutte le operazioni effettuate. Inoltre essendo i database in locale, questo crea inconsistenza dei dati.
 
 #### 1. Inserimento Segnalazione
 Nel canale **#segnalazione-bug**, l'utente descrive il bug in linguaggio naturale, senza dover seguire template prestabiliti.
