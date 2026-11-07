@@ -9,7 +9,7 @@ from bug_sorting.relational_db import *
 
 load_dotenv()
 
-# token identificatico dell'applicazione Discord che farà girare questo script
+# token identificativo dell'applicazione Discord che farà girare questo script
 DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
 # identificativo del canale in cui gli utenti possono scrivere i feedback
@@ -29,7 +29,7 @@ client = discord.Client(intents=intents)
 # connessione al database vettoriale
 v_db_conn = init_lancedb()
 
-# region utilty
+# region utility
 
 def find_similar_feedback(db, query_text: str, platform: str, category: str, top_k: int = 5) -> list[dict]:
     """
