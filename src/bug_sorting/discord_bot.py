@@ -3,7 +3,7 @@ import asyncio
 import os
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from bug_sorting.workflow import bugSortingWF
+from bug_sorting.workflow import bugSortingWF, devFixWF
 from bug_sorting.vector_db import *
 from bug_sorting.relational_db import *
 
@@ -65,15 +65,6 @@ def deduplicate_vector_feedback(feedback_data: BaseModel) -> list:
         list: Lista di ID dei feedback duplicati.
     """
 
-    ## trasforma gli step per riprodurre un bug (se presenti) in una stringa
-    #steps = " ".join(feedback_data.steps_to_reproduce) if feedback_data.steps_to_reproduce else ""
-#
-    ## concatena titolo, descrizione, steps, messaggi di errore e contesto aggiuntivo in una stringa sola
-    #testo_grezzo = f"{feedback_data.title} {feedback_data.description} {steps} {feedback_data.error_message} {feedback_data.additional_context}"
-#
-    ## rimuove eventuali spazi multipli e normalizza il testo
-    #vector_text = " ".join(testo_grezzo.split())
-
     vector_text = genera_testo_embedding(
         titolo=feedback_data.title,
         descrizione=feedback_data.description,
@@ -114,12 +105,14 @@ def create_feedback_embed(feedback_data: BaseModel, feedback_id: int, duplicates
         color = color
     )
 
+    contesto_aggiuntivo = "" if feedback_data.additional_context == "UNKNOWN" else feedback_data.additional_context
+
     embed.add_field(name="Categoria", value=feedback_data.category.value, inline=True)
     embed.add_field(name="Gravità", value=feedback_data.severity.value, inline=True)
     embed.add_field(name="Piattaforma", value=feedback_data.platform, inline=True)
     embed.add_field(name="Passaggi per riprodurre", value="\n".join(feedback_data.steps_to_reproduce) if feedback_data.steps_to_reproduce else "Nessun dettaglio fornito", inline=False)
     embed.add_field(name="Messaggio di errore", value=feedback_data.error_message if feedback_data.error_message else "Nessun dettaglio fornito", inline=False)
-    embed.add_field(name="Contesto aggiuntivo", value=feedback_data.additional_context if feedback_data.additional_context else "Nessun dettaglio fornito", inline=False)
+    embed.add_field(name="Contesto aggiuntivo", value=contesto_aggiuntivo if contesto_aggiuntivo != "" else "Nessun dettaglio fornito", inline=False)
 
     # se sono presenti dublicati, aggiunge un campo all'embed per elencarli
     if duplicates_info:
@@ -348,6 +341,109 @@ class DuplicateSelect(discord.ui.Select):
         
         await interaction.response.edit_message(embed=embed, view=self.view)
         await interaction.followup.send(f"feedback #{current_feedback_id} archiviato come duplicato di #{original_feedback_id}.", ephemeral=True)
+
+def search_feedback_using_dev_fix(db, dev_fix_data: BaseModel, top_k: int = 5) -> list[dict]:
+    """
+    Esegue una ricerca nel database vettoriale per trovare i feedback più simili al messaggio del programmatore.
+    Args:
+        db: Connessione al database vettoriale.
+        dev_fix_data (BaseModel): Oggetto contenente i dati del messaggio del programmatore.
+        top_k (int): Numero massimo di risultati da restituire.
+    Returns:
+        list[dict]: Lista di dizionari contenenti i risultati della ricerca.
+    """
+    # testo da cui generare l'embedding per la ricerca
+    query_text = dev_fix_data.search_query
+
+    # esecuzione della ricerca vettoriale con filtro per piattaforma
+    # non filtra per categoria in quanto eventuali allucinazioni non corregibili in questa fase potrebbero portare a scartare risultati validi
+    table = db.open_table("feedback_vectors")
+    results = table.search(query_text) \
+        .where(f"platform = '{dev_fix_data.platform}' AND status = 'accepted'") \
+        .limit(top_k) \
+        .to_list()
+
+    return results
+
+class ResolutionSelect(discord.ui.Select):
+    """
+    Select di Discord per permettere allo sviluppatore di confermare quale bug è stato risolto.
+    """
+    def __init__(self, risultati_ricerca: list[dict], fix_text: str):
+        self.fix_text = fix_text
+        options = []
+        for res in risultati_ricerca:
+            feedback_id = res["feedback_id"]
+            # troncamento per i limiti di Discord
+            snippet = res["text"][:95] + "..." if len(res["text"]) > 95 else res["text"]
+
+            # ad ogni opzione viene associato l'identificatore come valore
+            options.append(discord.SelectOption(label=f"Feedback #{feedback_id}", description=snippet, value=str(feedback_id)))
+        
+        # Opzione di sicurezza
+        options.append(discord.SelectOption(label="Nessuno di questi", description="Annulla l'operazione di chiusura", value="cancel"))
+        super().__init__(placeholder="Segna come risolto...", min_values=1, max_values=len(options), options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+
+        if "cancel" in self.values:
+            for child in self.view.children:
+                child.disabled = True
+            await interaction.response.edit_message(content="Operazione annullata.", view=self.view, embed=None)
+            return
+
+        try:
+            for scelta in self.values:
+                feedback_id = int(scelta)
+                # esecuzione degli update sui database
+                await asyncio.to_thread(resolve_feedback_and_duplicates, feedback_id, self.fix_text)
+                await asyncio.to_thread(update_status, feedback_id, "resolved", v_db_conn)
+
+        except Exception as e:
+            await interaction.response.send_message(f"Errore durante l'aggiornamento dei database: {e}", ephemeral=True)
+            return
+
+        for child in self.view.children:
+            child.disabled = True
+
+        await interaction.response.edit_message(content=f"✅ I feedback selezionati sono stati contrassegnati come risolti in entrambi i database.", view=self.view, embed=None)
+
+        #scelta = self.values[0]
+#
+        ## disabilitazione interfaccia se l'utente annulla l'operazione
+        #if scelta == "cancel":
+        #    for child in self.view.children:
+        #        child.disabled = True
+        #    await interaction.response.edit_message(content="Operazione annullata.", view=self.view, embed=None)
+        #    return
+#
+        #feedback_id = int(scelta)
+        #
+        ## esecuzione degli update sui database
+        #try:
+        #    # aggiorna relazionale
+        #    await asyncio.to_thread(update_feedback_status, feedback_id, "resolved")
+        #    
+        #    # aggiorna database vettoriale 
+        #    await asyncio.to_thread(update_status, feedback_id, "resolved", v_db_conn)
+        #except Exception as e:
+        #    await interaction.response.send_message(f"Errore durante l'aggiornamento dei database: {e}", ephemeral=True)
+        #    return
+#
+        ## disabilita i pulsanti
+        #for child in self.view.children:
+        #    child.disabled = True
+        #    
+        #await interaction.response.edit_message(content=f"✅ Il feedback #{feedback_id} è stato contrassegnato come risolto in entrambi i database.", view=self.view, embed=None)
+
+class DevResolutionView(discord.ui.View):
+    """
+    View di Discord contenente il menù a tendina per permettere allo sviluppatore di confermare quale bug è stato risolto.
+    """
+    def __init__(self, risultati_ricerca: list[dict], fix_text: str):
+        super().__init__(timeout=None)
+        self.add_item(ResolutionSelect(risultati_ricerca, fix_text=fix_text))
+
 # endregion
 
 # funzione che si attiva quando il bot fa il login per connettersi ai server di discord
@@ -375,60 +471,97 @@ async def on_message(message):
         return
         
     # ignora i messaggi ricevuti al di fuori del canale #segnalazione-bug (altrimenti risponderebbe a qualsiasi messaggio ricevuto)
-    if message.channel.id != FEEDBACK_CHANNEL_ID:
-        return
+    if message.channel.id == FEEDBACK_CHANNEL_ID:
 
-    await message.add_reaction("⌛") # aggiunge una reazione 'clessidra' al messaggio in attesa di elaborazione
-    print(f"Messaggio ricevuto: {message.content} da {message.author}") # stampa del messaggio ricevuto (debug)
+        await message.add_reaction("⌛") # aggiunge una reazione 'clessidra' al messaggio in attesa di elaborazione
+        print(f"Messaggio ricevuto in #segnalazione-bug: {message.content} da {message.author}") # stampa del messaggio ricevuto (debug)
 
-    try:
-        risultato = await asyncio.to_thread(bugSortingWF, message.content)  # esegue la funzione di elaborazione del feedback in un thread separato per non bloccare l'evento principale
-        await message.remove_reaction("⌛", client.user) # rimuove la reazione 'clessidra' dal messaggio una volta finita l'elaborazione.
+        try:
+            risultato = await asyncio.to_thread(bugSortingWF, message.content)  # esegue la funzione di elaborazione del feedback in un thread separato per non bloccare l'evento principale
+            await message.remove_reaction("⌛", client.user) # rimuove la reazione 'clessidra' dal messaggio una volta finita l'elaborazione.
 
-        # l'unico risultato del workflow risultante in un BaseModel è quello in cui il testo di input era valido
-        if hasattr(risultato, 'content') and isinstance(risultato.content, BaseModel):
-            feedback_estratto = risultato.content
-            
-            # esecuzione della deduplicazione
-            id_duplicati = await asyncio.to_thread(deduplicate_vector_feedback, feedback_estratto)
+            # l'unico risultato del workflow risultante in un BaseModel è quello in cui il testo di input era valido
+            if hasattr(risultato, 'content') and isinstance(risultato.content, BaseModel):
+                feedback_estratto = risultato.content
+                
+                # esecuzione della deduplicazione
+                id_duplicati = await asyncio.to_thread(deduplicate_vector_feedback, feedback_estratto)
 
-            # se sono stati trovati duplicati, recupera le informazioni dei feedback duplicati per mostrarle nel menù a tendina
-            info_duplicati = await asyncio.to_thread(get_feedback_summaries, id_duplicati) if id_duplicati else []
+                # se sono stati trovati duplicati, recupera le informazioni dei feedback duplicati per mostrarle nel menù a tendina
+                info_duplicati = await asyncio.to_thread(get_feedback_summaries, id_duplicati) if id_duplicati else []
 
-            # se sono stati trovati duplicati, imposta il flag is_potential_duplicate a 1
-            is_potential_duplicate = 1 if id_duplicati else 0
+                # se sono stati trovati duplicati, imposta il flag is_potential_duplicate a 1
+                is_potential_duplicate = 1 if id_duplicati else 0
 
-            # inserisce il feedback nel database relazionale e ottiene l'ID del nuovo record
-            new_feedback_id = await asyncio.to_thread(insert_feedback, feedback_estratto, is_potential_duplicate=is_potential_duplicate)
+                # inserisce il feedback nel database relazionale e ottiene l'ID del nuovo record
+                new_feedback_id = await asyncio.to_thread(insert_feedback, feedback_estratto, is_potential_duplicate=is_potential_duplicate)
 
-            # ottenimento del canale sviluppatori per inviare l'embed con i dettagli del feedback
-            dev_channel = client.get_channel(DEVELOPER_CHANNEL_ID)
+                # ottenimento del canale sviluppatori per inviare l'embed con i dettagli del feedback
+                dev_channel = client.get_channel(DEVELOPER_CHANNEL_ID)
 
-            # controllo per verificare che il canale sia stato trovato
-            if not dev_channel:
-                print("Errore: Canale sviluppatori non trovato.")
-                return
+                # controllo per verificare che il canale sia stato trovato
+                if not dev_channel:
+                    print("Errore: Canale sviluppatori non trovato.")
+                    return
 
-            # creazione dell'embed con i dati del feedback
-            embed_feedback_for_dev = create_feedback_embed(feedback_estratto, new_feedback_id, duplicates_info=info_duplicati)
-            # invio dell'embed al canale sviluppatori con la view di moderazione dei feedback
-            await dev_channel.send(embed=embed_feedback_for_dev, view=FeedbackModerationView(duplicate_ids=info_duplicati))
+                # creazione dell'embed con i dati del feedback
+                embed_feedback_for_dev = create_feedback_embed(feedback_estratto, new_feedback_id, duplicates_info=info_duplicati)
+                # invio dell'embed al canale sviluppatori con la view di moderazione dei feedback
+                await dev_channel.send(embed=embed_feedback_for_dev, view=FeedbackModerationView(duplicate_ids=info_duplicati))
 
-            # stampa a console per debug
-            if id_duplicati:
-                print(f"ATTENZIONE: Possibili duplicati trovati con ID: {id_duplicati}.")
-                print(f"Nuovo feedback inserito con ID: {new_feedback_id}.")
+                # stampa a console per debug
+                if id_duplicati:
+                    print(f"ATTENZIONE: Possibili duplicati trovati con ID: {id_duplicati}.")
+                    print(f"Nuovo feedback inserito con ID: {new_feedback_id}.")
+                else:
+                    print(f"Nuovo feedback inserito con ID: {new_feedback_id}. Nessun duplicato trovato.")
+                await message.add_reaction("✅") # aggiunge una reazione ✅ al messaggio per indicare che l'elaborazione è stata completata con successo
+                print(feedback_estratto.model_dump_json(indent=4))  # stampa per debug
             else:
-                print(f"Nuovo feedback inserito con ID: {new_feedback_id}. Nessun duplicato trovato.")
-            await message.add_reaction("✅") # aggiunge una reazione ✅ al messaggio per indicare che l'elaborazione è stata completata con successo
-            print(feedback_estratto.model_dump_json(indent=4))  # stampa per debug
-        else:
-            await message.add_reaction("❌") # aggiunge una reazione ❌ al messaggio per indicare che l'elaborazione non è andata a buon fine
+                await message.add_reaction("❌") # aggiunge una reazione ❌ al messaggio per indicare che l'elaborazione non è andata a buon fine
 
-    except Exception as e:
-        await message.remove_reaction("⌛", client.user)
-        await message.add_reaction("❌")
-        print(f"Errore durante l'elaborazione del messaggio: {e}")
+        except Exception as e:
+            await message.remove_reaction("⌛", client.user)
+            await message.add_reaction("❌")
+            print(f"Errore durante l'elaborazione del messaggio: {e}")
+
+    elif message.channel.id == DEVELOPER_CHANNEL_ID:
+        await message.add_reaction("⌛") # aggiunge una reazione 'clessidra' al messaggio in attesa di elaborazione
+        print(f"Messaggio ricevuto in #developer-only: {message.content} da {message.author}")
+
+        try:
+            risultato = await asyncio.to_thread(devFixWF, message.content)  # esegue la funzione di elaborazione del messaggio sviluppatore in un thread separato per non bloccare l'evento principale
+            await message.remove_reaction("⌛", client.user) # rimuove la reazione 'clessidra' dal messaggio una volta finita l'elaborazione.
+            
+            # l'unico risultato del workflow risultante in un BaseModel è quello in cui il testo di input era valido
+            if hasattr(risultato, 'content') and isinstance(risultato.content, BaseModel):
+                feedback_estratto = risultato.content
+                print(f"Messaggio sviluppatore elaborato correttamente: {feedback_estratto.model_dump_json(indent=4)}")
+
+                for singolo_fix in feedback_estratto.fixes:
+                    print(f"Elaborazione del fix: {singolo_fix.model_dump_json(indent=4)}")
+
+                    # cerca feedback simili nel database
+                    ricerca_simili = await asyncio.to_thread(search_feedback_using_dev_fix, v_db_conn, singolo_fix)
+
+                    if ricerca_simili:
+                        # invia il menù a tendina allo sviluppatore
+                        view = DevResolutionView(ricerca_simili, fix_text=singolo_fix.fix)
+                        await message.reply(f"Per **'{singolo_fix.search_query}'** ({singolo_fix.platform}) ho trovato questi feedback:", view=view)
+                        await message.add_reaction("✅")
+                    else:
+                        # nessun match trovato
+                        await message.reply(f"Nessun feedback aperto corrispondente per **'{singolo_fix.search_query}'** ({singolo_fix.platform}).")
+                        await message.add_reaction("❓")
+
+            else:
+                await message.add_reaction("❌") # aggiunge una reazione ❌ al messaggio per indicare che l'elaborazione non è andata a buon fine
+        except Exception as e:
+                    await message.remove_reaction("⌛", client.user)
+                    await message.add_reaction("❌")
+                    print(f"Errore durante l'elaborazione del messaggio: {e}")
+    else:
+        return
         
 # avvia la connessione del bot a discord utilizzando il token di autenticazione
 client.run(DISCORD_TOKEN)

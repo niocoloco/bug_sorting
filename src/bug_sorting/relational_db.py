@@ -42,6 +42,7 @@ def init_db():
         status TEXT NOT NULL DEFAULT 'pending',
         additional_context TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fix TEXT DEFAULT 'UNKNOWN',
 
         is_potential_duplicate INTEGER DEFAULT 0,
         duplicate_of_id INTEGER,
@@ -263,6 +264,26 @@ def mark_as_duplicate(feedback_id: int, original_feedback_id: int):
 
     # esecuzione della query di aggiornamento
     cursor.execute(query, (original_feedback_id, feedback_id))
+
+    # commit delle modifiche
+    conn.commit()
+
+    # chiusura della connessione al database
+    conn.close()
+
+def resolve_feedback_and_duplicates(feedback_id: int, fix_text: str):
+    """
+    Imposta lo stato a 'resolved' e salva il dettaglio tecnico sia per il ticket originale
+    che per tutti i feedback segnalati come suoi duplicati.
+    """
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        UPDATE feedbacks 
+        SET status = 'resolved', fix = ? 
+        WHERE id = ? OR duplicate_of_id = ?
+    ''', (fix_text, feedback_id, feedback_id))
 
     # commit delle modifiche
     conn.commit()
