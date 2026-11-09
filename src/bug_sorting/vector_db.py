@@ -6,9 +6,6 @@ from lancedb.pydantic import LanceModel, Vector
 from lancedb.embeddings import get_registry
 from pathlib import Path
 
-from pydantic import BaseModel
-from torch import where
-
 # inizializzazione dell'embedder locale
 # la scelta di usare un embedder locale è motivata dalla necessità di non sprecare i token di cui hanno bisogno gli agenti per generare le risposte
 #embedder = get_registry().get("sentence-transformers").create(name="all-MiniLM-L6-v2")
@@ -22,6 +19,7 @@ class FeedbackVector(LanceModel):
     feedback_id: int
     platform: str
     category: str
+    status: str
     # definizione del campo di testo che verrà utilizzato per generare l'embedding
     text: str = embedder.SourceField()
     # definizione della dimensione del vettore di embedding (384 dimensioni per il modello all-MiniLM-L6-v2)
@@ -41,6 +39,9 @@ def init_lancedb():
 
     table_name = "feedback_vectors"
 
+    # se si è già creato il database con una versione precedente, scommentare questa riga, eseguire, bloccare, ricommentare e rieseguire per evitare errori di schema
+    # db.drop_table(table_name, ignore_missing=True)
+
     # exist_ok=True riutilizza la tabella esistente senza modificarne lo schema
     db.create_table(table_name, schema=FeedbackVector, exist_ok=True)
 
@@ -53,11 +54,6 @@ def insert_feedback_vector(feedback_data: dict, db_connection):
 
     # connessione alla tabella dei vettori di feedback
     table = db_connection.open_table("feedback_vectors")
-
-    ## creazione del contenuto testuale da cui generare l'embedding
-    #steps = feedback_data.get('steps_to_reproduce') or ""
-    #error = feedback_data.get('error_message') or ""
-    #text_content = f"{feedback_data['title']}. {feedback_data['description']}. {steps}. {error}".strip()
 
     text_content = genera_testo_embedding(
         titolo=feedback_data['title'],
@@ -72,6 +68,7 @@ def insert_feedback_vector(feedback_data: dict, db_connection):
             "feedback_id": feedback_data['id'],
             "platform": feedback_data.get('platform') or "UNKNOWN",
             "category": feedback_data['category'],
+            "status": 'accepted',
             "text": text_content
         }
     ])
@@ -84,3 +81,14 @@ def genera_testo_embedding(titolo: str, descrizione: str, steps: list, error: st
     error_str = error or ""
     testo_grezzo = f"{titolo} {descrizione} {steps_str} {error_str}"
     return " ".join(testo_grezzo.split())
+
+def update_status(feedback_id: int, new_status: str, db_connection):
+    """
+    Aggiorna lo stato di un feedback nel database vettoriale.
+    """
+    table = db_connection.open_table("feedback_vectors")
+
+    table.update(
+        where=f"feedback_id = {feedback_id}",
+        values={"status": new_status}
+    )

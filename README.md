@@ -155,10 +155,10 @@ Dati formattati:
 
 Nell'embed di Discord è apparso un menù a tendina con gli identificatori dei feedback ritenuti simili attraverso la ricerca nel database vettoriale. In questo caso è apparso selezionabile il feedback inserito nel test 1.
 
-### Test 4: Nuovo feedback e modifica ai dati
+### Test 5: Nuovo feedback e modifica ai dati
 Input
 ```
-stavo andando a cavallo sella zona della neve e il gioco è calato sotto i 30 fps. considerando che uso una rtx5090 non penso il problema sia mio, ma vostro. imparate ad ottimizzare il gioco prima di pubblicarlo da niocoloco
+stavo andando a cavallo sella zona della neve e il gioco è calato sotto i 30 fps. considerando che uso una rtx5090 non penso il problema sia mio, ma vostro. imparate ad ottimizzare il gioco prima di pubblicarlo
 ```
 
 Dati filtrati:
@@ -185,8 +185,47 @@ Dati formattati:
 Dall'embed di Discord è possibile modificare i valori assegnati dall'agente. Ad esempio la severity a medium, abbassabile in questo caso a low. Si può anche notare come la piattaforma sia diventata PC senza specificarlo, in questo caso è corretto, ma la funzione di modifica è implementata per risolvere eventuali allucinazioni.
 Inoltre in questo caso non appare il menù a tendina in quanto il feedback non è simile ad altri precedentemente inseriti.
 
-### Test 5: Riavvio del bot con feedback 'pending'
+### Test 6: Riavvio del bot con feedback 'pending'
 Inserendo un feedback e riavviando il bot, i pulsanti rimangono funzionanti ed è possibile interagire con i feedback inviati prima del riavvio.
+
+### Test 7: Filtro del rumore nei messaggi degli sviluppatori
+Input
+```
+Ragazzi a che ora è la riunione con il publisher? Ah, ricordatevi di non toccare il server di staging oggi pomeriggio che sto facendo dei test di carico.
+```
+
+Dati filtrati
+```
+content='' valid=False
+```
+
+### Test 8: Risoluzione di bug multipli e gestione dei duplicati
+Input
+```
+Venerdì rilascio la patch. Ho risolto i cali di frame nella zona della neve su PC, era un problema di caricamento asincrono delle texture. Inoltre, ho sistemato l'arma che spariva contro la guardia su PS5 correggendo l'algoritmo di rendering.
+```
+
+Dati formattati
+```
+{
+    "fixes": [
+        {
+            "search_query": "Il gioco subisce cali di frame nella zona della neve",
+            "category": "performance_issue",
+            "platform": "PC",
+            "fix": "problema di caricamento asincrono delle texture"
+        },
+        {
+            "search_query": "L'arma sparisce quando sparo contro la guardia",
+            "category": "bug",
+            "platform": "PS5",
+            "fix": "corretto l'algoritmo di rendering"
+        }
+    ]
+}
+```
+Sotto all'input appare inoltre un menù a tendina che permette di scegliere (per ogni feedback aperto individuale), a quale dei feedback il messaggio si riferisce.
+La scelta è multipla.
 
 ## Deployment nel proprio server Discord
 
