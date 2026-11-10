@@ -60,7 +60,7 @@ Nel canale **#developer-only**, il sistema genera un Embed riassuntivo contenent
 Gli sviluppatori possono scrivere all'interno del canale #developer-only per "chiudere" i feedback aperti.
 Basterà descrivere manualmente il feedback risolto e una volta premuto invio apparirà una lista di feedback considerati simili a quello descritto.
 Inoltre, se lo sviluppatore scrive come ha risolto il bug, questo dato finirà all'interno del database relazionale, sia per il feedback che per gli eventuali duplicati.
-È possibile descrivere 
+È possibile descrivere più di un feedback all'interno di un singolo messaggio.
 
 ## Test
 
