@@ -380,24 +380,25 @@ class ResolutionSelect(discord.ui.Select):
             # ad ogni opzione viene associato l'identificatore come valore
             options.append(discord.SelectOption(label=f"Feedback #{feedback_id}", description=snippet, value=str(feedback_id)))
         
-        # Opzione di sicurezza
+        # opzione di sicurezza
         options.append(discord.SelectOption(label="Nessuno di questi", description="Annulla l'operazione di chiusura", value="cancel"))
-        super().__init__(placeholder="Segna come risolto...", min_values=1, max_values=len(options), options=options)
+        super().__init__(placeholder="Segna come risolto...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
+        
+        scelta = self.values[0]
 
-        if "cancel" in self.values:
+        if scelta == "cancel":
             for child in self.view.children:
                 child.disabled = True
             await interaction.response.edit_message(content="Operazione annullata.", view=self.view, embed=None)
             return
 
         try:
-            for scelta in self.values:
-                feedback_id = int(scelta)
-                # esecuzione degli update sui database
-                await asyncio.to_thread(resolve_feedback_and_duplicates, feedback_id, self.fix_text)
-                await asyncio.to_thread(update_status, feedback_id, "resolved", v_db_conn)
+            feedback_id = int(scelta)
+            # esecuzione degli update sui database
+            await asyncio.to_thread(resolve_feedback_and_duplicates, feedback_id, self.fix_text)
+            await asyncio.to_thread(update_status, feedback_id, "resolved", v_db_conn)
 
         except Exception as e:
             await interaction.response.send_message(f"Errore durante l'aggiornamento dei database: {e}", ephemeral=True)
@@ -406,35 +407,7 @@ class ResolutionSelect(discord.ui.Select):
         for child in self.view.children:
             child.disabled = True
 
-        await interaction.response.edit_message(content=f"✅ I feedback selezionati sono stati contrassegnati come risolti in entrambi i database.", view=self.view, embed=None)
-
-        #scelta = self.values[0]
-#
-        ## disabilitazione interfaccia se l'utente annulla l'operazione
-        #if scelta == "cancel":
-        #    for child in self.view.children:
-        #        child.disabled = True
-        #    await interaction.response.edit_message(content="Operazione annullata.", view=self.view, embed=None)
-        #    return
-#
-        #feedback_id = int(scelta)
-        #
-        ## esecuzione degli update sui database
-        #try:
-        #    # aggiorna relazionale
-        #    await asyncio.to_thread(update_feedback_status, feedback_id, "resolved")
-        #    
-        #    # aggiorna database vettoriale 
-        #    await asyncio.to_thread(update_status, feedback_id, "resolved", v_db_conn)
-        #except Exception as e:
-        #    await interaction.response.send_message(f"Errore durante l'aggiornamento dei database: {e}", ephemeral=True)
-        #    return
-#
-        ## disabilita i pulsanti
-        #for child in self.view.children:
-        #    child.disabled = True
-        #    
-        #await interaction.response.edit_message(content=f"✅ Il feedback #{feedback_id} è stato contrassegnato come risolto in entrambi i database.", view=self.view, embed=None)
+        await interaction.response.edit_message(content=f"✅ Il feedback selezionato è stato contrassegnato come risolto in entrambi i database.", view=self.view, embed=None)
 
 class DevResolutionView(discord.ui.View):
     """

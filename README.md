@@ -1,6 +1,7 @@
 # BugSorting
 
 BugSorting è un sistema intelligente il cui scopo è raccogliere e filtrare i feedback riguardanti un videogioco inviati dalla community tramite un canale Discord per aiutare il lavoro degli sviluppatori indipendenti.
+Il sistema permette inoltre agli sviluppatori di segnalare i feedback come risolti utilizzando il linguaggio naturale, senza dover manualmente intervenire sul database.
 
 ## Deployment rapido
 
@@ -54,6 +55,12 @@ Nel canale **#developer-only**, il sistema genera un Embed riassuntivo contenent
 - **Pulsante RIFIUTA:** Scarta il feedback aggiornandone lo stato.
 - **Pulsante MODIFICA:** Apre un modale che permette al moderatore di sovrascrivere manualmente il titolo, la categoria, la gravità o la piattaforma in caso di allucinazioni da parte dell'AI.
 - **Menù "Segna come duplicato...":** Questo menù a tendina appare **solo** se il motore vettoriale ha riscontrato un'alta similitudine semantica con feedback già approvati in passato. Selezionando una voce, il feedback corrente viene chiuso e contrassegnato come duplicato del bug originale selezionato.
+
+### 3. Risoluzione dei feedback
+Gli sviluppatori possono scrivere all'interno del canale #developer-only per "chiudere" i feedback aperti.
+Basterà descrivere manualmente il feedback risolto e una volta premuto invio apparirà una lista di feedback considerati simili a quello descritto.
+Inoltre, se lo sviluppatore scrive come ha risolto il bug, questo dato finirà all'interno del database relazionale, sia per il feedback che per gli eventuali duplicati.
+È possibile descrivere 
 
 ## Test
 
@@ -188,7 +195,7 @@ Inoltre in questo caso non appare il menù a tendina in quanto il feedback non �
 ### Test 6: Riavvio del bot con feedback 'pending'
 Inserendo un feedback e riavviando il bot, i pulsanti rimangono funzionanti ed è possibile interagire con i feedback inviati prima del riavvio.
 
-### Test 7: Filtro del rumore nei messaggi degli sviluppatori
+### Test 7: Filtro del rumore nei messaggi degli sviluppatori (su #developer-only)
 Input
 ```
 Ragazzi a che ora è la riunione con il publisher? Ah, ricordatevi di non toccare il server di staging oggi pomeriggio che sto facendo dei test di carico.
@@ -202,7 +209,7 @@ content='' valid=False
 ### Test 8: Risoluzione di bug multipli e gestione dei duplicati
 Input
 ```
-Venerdì rilascio la patch. Ho risolto i cali di frame nella zona della neve su PC, era un problema di caricamento asincrono delle texture. Inoltre, ho sistemato l'arma che spariva contro la guardia su PS5 correggendo l'algoritmo di rendering.
+Venerdì rilascio la patch. Ho risolto i cali di frame nella zona della neve mentre andavo a cavallo su PC, era un problema di caricamento asincrono delle texture che faceva calare le prestazioni. Inoltre, ho sistemato l'arma che spariva contro la guardia su PS5 correggendo l'algoritmo di rendering.
 ```
 
 Dati formattati
