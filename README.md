@@ -232,7 +232,6 @@ Dati formattati
 }
 ```
 Sotto all'input appare inoltre un menù a tendina che permette di scegliere (per ogni feedback aperto individuale), a quale dei feedback il messaggio si riferisce.
-La scelta è multipla.
 
 ## Deployment nel proprio server Discord
 
